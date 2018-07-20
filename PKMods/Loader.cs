@@ -15,7 +15,7 @@ namespace PKMods
         {
             //var harmony = HarmonyInstance.Create("com.github.pathos0001.mods.pk");
             //harmony.PatchAll(Assembly.GetExecutingAssembly());
-            Debug.Log("Loading PKMods2B");
+            Debug.Log("Loading PKMods");
             if (GameObject.Find("ModHolder"))
             {
                 Debug.Log("Destroying previous holder");
