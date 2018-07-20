@@ -9,8 +9,12 @@ The git to the included injector can be found here: https://github.com/Michidu/M
 
 After injecting press F1 to pull up the menu.
 
-As of writing, the only funtionality is to save textures.
-### TODO
+As of writing:
+
+#### Current Functionality
+- Save textures
+
+#### In Progress
 - Save/Load textures on demand for the selected animal
 - Save/Load texture packs
-- 
+
