@@ -1,1 +1,1 @@
-MonoInjector64.exe --target "Prehistoric Kingdom.exe" --dll PKMods.dll --namespace PKMods2B --class Loader --method Load
+MonoInjector64.exe --target "Prehistoric Kingdom.exe" --dll PKMods.dll --namespace PKMods --class Loader --method Load

@@ -1,182 +1,452 @@
-﻿using System;
+﻿using SevenZip;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Xml.Serialization;
 using UnityEngine;
 
 namespace PKMods
 {
-    class TexturePackMod : MonoBehaviour
+    public class TexturePackMod : MonoBehaviour
     {
+        public Dictionary<string, List<Texture>> addedTextures;
+        Dictionary<string, Texture2D> loadedTextures;
+        public List<string> loadedTexturePackNames;
+        public static string PREFIX_PKTEX = "!!PKTEX";
+        public static int VERSION = 1;
+        public static string ENCODING_ASCII = "ASC";
+        public static string ENCODING_BINARY = "BIN";
+        public static string ENCODING_BINARY_COMPRESSED = "CMP";
 
+        public Action<bool> OnTexturepacksAdded;
 
-        public static void AddSkinByType(AnimalPreview preview, Texture2D tex, string type, bool feathered)
+        public void Start()
         {
-            if (feathered)
+            //check dependencies
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            bool found = false;
+            foreach (var assembly in assemblies)
             {
-                bool flag = type == "Male";
-                if (flag)
+                if (assembly.FullName.ToUpper().Contains(("SevenZipSharp").ToUpper()))
                 {
-                    preview.featheredMaleSkins.Add(tex);
-                }
-                else
-                {
-                    bool flag2 = type == "Female";
-                    if (flag2)
-                    {
-                        preview.featheredFemaleSkins.Add(tex);
-                    }
-                    else
-                    {
-                        bool flag3 = type == "Male_and_Female";
-                        if (flag3)
-                        {
-                            preview.featheredMaleSkins.Add(tex);
-                            preview.featheredFemaleSkins.Add(tex);
-                        }
-                        else
-                        {
-                            bool flag4 = type == "Adolescent";
-                            if (flag4)
-                            {
-                                preview.featheredAdolescentSkins.Add(tex);
-                            }
-                            else
-                            {
-                                bool flag5 = type == "Baby";
-                                if (flag5)
-                                {
-                                    preview.featheredBabySkins.Add(tex);
-                                }
-                                else
-                                {
-                                    bool flag6 = type == "NormalMap";
-                                    if (flag6)
-                                    {
-                                        preview.featheredNormalMapSkins.Add(tex);
-                                    }
-                                    else
-                                    {
-                                        bool flag7 = type == "Albino";
-                                        if (flag7)
-                                        {
-                                            preview.featheredAlbinoSkins.Add(tex);
-                                        }
-                                        else
-                                        {
-                                            bool flag8 = type == "Melanistic";
-                                            if (flag8)
-                                            {
-                                                preview.featheredMelanisticSkins.Add(tex);
-                                            }
-                                            else
-                                            {
-                                                bool flag9 = type == "Baby Albino";
-                                                if (flag9)
-                                                {
-                                                    preview.featheredBabyAlbinoSkins.Add(tex);
-                                                }
-                                                else
-                                                {
-                                                    bool flag10 = type == "Baby Melanistic";
-                                                    if (flag10)
-                                                    {
-                                                        preview.featheredBabyMelanisticSkins.Add(tex);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    found = true;
                 }
             }
-            else
+            if (!found)
             {
-                bool flag11 = type == "Male";
-                if (flag11)
+                Debug.LogError("PKMODS ERROR:  File 7za.dll is missing from the Managed subfolder! In order to load compressed files, please copy it over and restart the game.");
+            }
+
+
+            string[] files = Directory.GetFiles(Application.dataPath + "\\Mods\\Dependencies", "7za.dll");
+            if (files.Length == 0)
+            {
+                Debug.LogError("PKMODS ERROR: File 7za.dll is missing from the Mods/Dependencies subfolder! In order to load compressed files, please copy it over and restart the game.");
+            }
+
+            //manually check for SevenZipSharp assembly?
+
+
+
+
+            addedTextures = new Dictionary<string, List<Texture>>();
+            loadedTextures = new Dictionary<string, Texture2D>();
+
+            if (!Directory.Exists(TEXTUREPACK_BASE_DIRECTORY))
+            {
+                Directory.CreateDirectory(TEXTUREPACK_BASE_DIRECTORY);
+            }
+
+            /*
+            List<GameObject> allAnimals = UnityEngine.Object.FindObjectOfType<ObjectHolderSelection>().allAnimals;
+            foreach(var preview in allAnimals)
+            {
+                Debug.Log(preview.name);
+                Debug.Log(preview.name.Trim().ToLower());
+            }
+            */
+        }
+
+        public static string TEXTUREPACK_BASE_DIRECTORY = Application.dataPath + "\\Mods\\Texturepacks";
+
+
+        public void ScanTexturePacks()
+        {
+            if (UnityEngine.Object.FindObjectOfType<ObjectHolderSelection>() == null)
+                return;
+
+            loadedTexturePackNames = new List<string>();
+            RemoveAllAddedTextures();
+            Debug.Log("Scanning for new texturepacks...");
+            string[] files = Directory.GetFiles(TEXTUREPACK_BASE_DIRECTORY + "\\", "*.PKTEX");
+            foreach( string filename in files)
+            {
+                Debug.Log("Adding " + Path.GetFileNameWithoutExtension(filename));
+                var pack = ReadTexturePack(filename);
+                AddTexturePack(pack);
+                loadedTexturePackNames.Add(Path.GetFileNameWithoutExtension(filename));
+            }
+            if (OnTexturepacksAdded != null)
+                OnTexturepacksAdded(true);
+        }
+
+        private void AddTexturePack(List<IncludedTexture> texturePack)
+        {
+            List<GameObject> allAnimals = UnityEngine.Object.FindObjectOfType<ObjectHolderSelection>().allAnimals;
+            if (allAnimals == null)
+                Debug.LogError("allAnimals not found!!");
+
+            //this finds each unique name per genus. In case the user has a skin for two or more different types of dinosaurs and wants to use the same name
+            List<string> uniqueSkinNames = new List<string>();
+            foreach (var skin in texturePack)//we can avoid using linq here
+            {
+                string uniqueName = skin.Genus + "\n" + skin.Name + "\n" + skin.Integument;
+                if (!uniqueSkinNames.Contains(uniqueName))
                 {
-                    preview.scalyMaleSkins.Add(tex);
+                    Debug.Log(uniqueName);
+                    uniqueSkinNames.Add(uniqueName);
                 }
-                else
+            }
+
+            //var uniqueNames = texturePack.Select(e => e.Name).Distinct();
+
+            foreach (var skinName in uniqueSkinNames)
+            {
+                string genus = skinName.Split('\n')[0];
+                string name = skinName.Split('\n')[1];
+                string integument = skinName.Split('\n')[2];
+
+                genus = genus.ToLower();
+                AnimalPreview component = allAnimals.First((GameObject e) => e.name.Trim().ToLower() == genus).GetComponent<AnimalPreview>();
+                if (!component)
+                    Debug.Log("AnimalPreview component is null: " + genus);
+
+                for (int i = 0; i < IncludedTexture.AvailableType.Length; i++)
                 {
-                    bool flag12 = type == "Female";
-                    if (flag12)
+                    string typeName = IncludedTexture.AvailableType[i];
+                    Debug.Log("typeName: " + typeName);
+                    var item = texturePack.FirstOrDefault(e => e.Name == name && e.Genus.ToLower() == genus && e.Type.ToLower() == typeName.ToLower() && e.Integument.ToLower() == integument.ToLower());
+                    if (item != null)
                     {
-                        preview.scalyFemaleSkins.Add(tex);
-                    }
-                    else
-                    {
-                        bool flag13 = type == "Male_and_Female";
-                        if (flag13)
+                        AddSingleTexture(item, component);
+                        if (item.Integument == "Feathered")
                         {
-                            preview.scalyMaleSkins.Add(tex);
-                            preview.scalyFemaleSkins.Add(tex);
+                            if (!component.featheredSkinNames.Contains(item.Name))
+                            {
+                                component.featheredSkinNames.Add(item.Name);
+                            }
                         }
                         else
                         {
-                            bool flag14 = type == "Adolescent";
-                            if (flag14)
+                            if (!component.scalySkinNames.Contains(item.Name))
                             {
-                                preview.scalyAdolescentSkins.Add(tex);
-                            }
-                            else
-                            {
-                                bool flag15 = type == "Baby";
-                                if (flag15)
-                                {
-                                    preview.scalyBabySkins.Add(tex);
-                                }
-                                else
-                                {
-                                    bool flag16 = type == "NormalMap";
-                                    if (flag16)
-                                    {
-                                        preview.scalyNormalMapsSkins.Add(tex);
-                                    }
-                                    else
-                                    {
-                                        bool flag17 = type == "Albino";
-                                        if (flag17)
-                                        {
-                                            preview.scalyAlbinoSkins.Add(tex);
-                                        }
-                                        else
-                                        {
-                                            bool flag18 = type == "Melanistic";
-                                            if (flag18)
-                                            {
-                                                preview.scalyMelanisticSkins.Add(tex);
-                                            }
-                                            else
-                                            {
-                                                bool flag19 = type == "Baby Albino";
-                                                if (flag19)
-                                                {
-                                                    preview.scalyBabyAlbinoSkins.Add(tex);
-                                                }
-                                                else
-                                                {
-                                                    bool flag20 = type == "Baby Melanistic";
-                                                    if (flag20)
-                                                    {
-                                                        preview.scalyBabyMelanisticSkins.Add(tex);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                component.scalySkinNames.Add(item.Name);
                             }
                         }
+                        //Debug.Log("Adding: " + item.Name);
+                    }
+                    else
+                    {
+                        Texture defaultTexture;
+                        if (integument == "Feathered")
+                        {
+                            defaultTexture = GetDefaultTextureFromPreviewByType(component, typeName, true);
+                        }
+                        else
+                        {
+                            defaultTexture = GetDefaultTextureFromPreviewByType(component, typeName, false);
+                        }
+                        AddSingleTexture(name, genus, integument, typeName, defaultTexture as Texture2D, component);
                     }
                 }
             }
         }
 
+        private List<IncludedTexture> ReadTexturePack(string openFileName)
+        {
+            List<IncludedTexture> includedTextures = new List<IncludedTexture>();
+
+            using (var fileStream = File.OpenRead(openFileName))
+            {
+                Debug.Log("Loading " + Path.GetFileNameWithoutExtension(openFileName));
+                byte[] encodingData = new byte[12];
+                fileStream.Read(encodingData, 0, encodingData.Length);
+                string prefix = Encoding.UTF8.GetString(encodingData, 0, PREFIX_PKTEX.Length);
+                int versionNumber = int.Parse(Encoding.UTF8.GetString(encodingData, PREFIX_PKTEX.Length, 2));
+                string encodingType = Encoding.UTF8.GetString(encodingData, PREFIX_PKTEX.Length + 2, 3);
+                Console.WriteLine("Prefix: " + prefix + ". Version: " + versionNumber + ". Encoding: " + encodingType);
+
+
+                System.Diagnostics.Stopwatch s = new System.Diagnostics.Stopwatch();
+
+                if (prefix != PREFIX_PKTEX)
+                {
+                    Debug.Log("This is not a valid PKTEX file!");
+                    return new List<IncludedTexture>();
+                }
+                if (encodingType == ENCODING_ASCII)
+                {
+                    byte[] checkForAscii = new byte[5];
+                    fileStream.Read(checkForAscii, 0, 5);
+                    var firstCharacters = System.Text.Encoding.Default.GetString(checkForAscii);
+                    fileStream.Position -= 5;
+
+                    if (firstCharacters == "<?xml")
+                    {
+                        var serializer = new XmlSerializer(typeof(List<IncludedTexture>));
+                        includedTextures = (List<IncludedTexture>)serializer.Deserialize(fileStream);
+                        Console.WriteLine("Deserializing Ascii xml");
+                    }
+                    else
+                    {
+                        //not xml
+                    }
+                }
+                else if (encodingType == ENCODING_BINARY)
+                {
+                    try
+                    {
+                        Console.WriteLine("Deserializing Binary");
+                        BinaryFormatter formatter = new BinaryFormatter();
+                        includedTextures = (List<IncludedTexture>)formatter.Deserialize(fileStream);
+                    }
+                    catch (SerializationException e2)
+                    {
+                        Console.WriteLine("Failed to deserialize: " + e2.Message);
+                    }
+                }
+                else if (encodingType == ENCODING_BINARY_COMPRESSED)
+                {
+                    s.Reset();
+                    s.Start();
+
+                    string path = Application.dataPath;
+                    SevenZipCompressor.SetLibraryPath(path + "\\Mods\\Dependencies" + "\\7za.dll");
+
+                    MemoryStream m2 = new MemoryStream();
+                    CopyTo(fileStream, m2);
+
+                    //todo: close filestream to save memory?
+                    m2.Position = 0;
+                    Debug.Log("m2.Length:" + m2.Length);
+
+                    MemoryStream mem = new MemoryStream();
+                    using (var extractor = new SevenZipExtractor(m2))
+                    {
+                        Debug.Log("Extracting 7z stream");
+                        try
+                        {
+                            Debug.Log("FilesCount:" + extractor.FilesCount);
+                            Debug.Log("Format:" + extractor.Format);
+
+                            extractor.ExtractFile(0, mem);
+                        }
+                        catch(Exception e)
+                        {
+                            Debug.Log(e.ToString());
+                        }
+                    }
+                    mem.Position = 0;
+
+                    BinaryFormatter formatter = new BinaryFormatter();
+                    includedTextures = (List<IncludedTexture>)formatter.Deserialize(mem);
+
+                    s.Stop();
+                    Console.WriteLine("Extraction took: " + s.ElapsedMilliseconds);
+                }
+            }
+
+            return includedTextures;
+        }
+
+        private void RemoveAllAddedTextures()
+        {
+            Debug.Log("Removing all textures...");
+
+            if (loadedTextures == null)
+                loadedTextures = new Dictionary<string, Texture2D>();
+
+            List<GameObject> allAnimals = UnityEngine.Object.FindObjectOfType<ObjectHolderSelection>().allAnimals;
+            if (FindObjectOfType<ObjectHolderSelection>() == null || allAnimals == null)
+                return;
+
+            foreach (var singleTexture in loadedTextures)
+            {
+                var data = IncludedTextureFromName(singleTexture.Key);
+                AnimalPreview component = allAnimals.FirstOrDefault(e => e.name.Trim().ToLower() == data.Genus.ToLower()).GetComponent<AnimalPreview>();
+                if (!component)
+                {
+                    Debug.Log("No AnimalPreview for this genus");
+                }
+                else
+                {
+                    RemoveSkinByType(component, singleTexture.Value, data.Type, data.Integument.ToLower() == "feathered");
+                }
+            }
+            loadedTextures.Clear();
+        }
+
+
+        public static void AddSkinByType(AnimalPreview preview, Texture2D tex, string type, bool feathered)
+        {
+
+            if (feathered)
+            {
+                switch (type)
+                {
+                    case "Male":
+                        preview.featheredMaleSkins.Add(tex);
+                        break;
+                    case "Female":
+                        preview.featheredFemaleSkins.Add(tex);
+                        break;
+                    case "Male and Female":
+                        preview.featheredMaleSkins.Add(tex);
+                        preview.featheredFemaleSkins.Add(tex);
+                        break;
+                    case "Adolescent":
+                        preview.featheredAdolescentSkins.Add(tex);
+                        break;
+                    case "Baby":
+                        preview.featheredBabySkins.Add(tex);
+                        break;
+                    case "NormalMap":
+                        preview.featheredNormalMapSkins.Add(tex);
+                        break;
+                    case "Albino":
+                        preview.featheredAlbinoSkins.Add(tex);
+                        break;
+                    case "Melanistic":
+                        preview.featheredMelanisticSkins.Add(tex);
+                        break;
+                    case "Baby Albino":
+                        preview.featheredBabyAlbinoSkins.Add(tex);
+                        break;
+                    case "Baby Melanistic":
+                        preview.featheredBabyMelanisticSkins.Add(tex);
+                        break;
+                }                
+            }
+            else
+            {
+                switch (type)
+                {
+                    case "Male":
+                        preview.scalyMaleSkins.Add(tex);
+                        break;
+                    case "Female":
+                        preview.scalyFemaleSkins.Add(tex);
+                        break;
+                    case "Male and Female":
+                        preview.scalyMaleSkins.Add(tex);
+                        preview.scalyFemaleSkins.Add(tex);
+                        break;
+                    case "Adolescent":
+                        preview.scalyAdolescentSkins.Add(tex);
+                        break;
+                    case "Baby":
+                        preview.scalyBabySkins.Add(tex);
+                        break;
+                    case "NormalMap":
+                        preview.scalyNormalMapsSkins.Add(tex);
+                        break;
+                    case "Albino":
+                        preview.scalyAlbinoSkins.Add(tex);
+                        break;
+                    case "Melanistic":
+                        preview.scalyMelanisticSkins.Add(tex);
+                        break;
+                    case "Baby Albino":
+                        preview.scalyBabyAlbinoSkins.Add(tex);
+                        break;
+                    case "Baby Melanistic":
+                        preview.scalyBabyMelanisticSkins.Add(tex);
+                        break;
+                }
+            }
+        }
+        public static void RemoveSkinByType(AnimalPreview preview, Texture2D tex, string type, bool feathered)
+        {
+            if (feathered)
+            {
+                switch (type)
+                {
+                    case "Male":
+                        preview.featheredMaleSkins.Remove(tex);
+                        break;
+                    case "Female":
+                        preview.featheredFemaleSkins.Remove(tex);
+                        break;
+                    case "Male and Female":
+                        preview.featheredMaleSkins.Remove(tex);
+                        preview.featheredFemaleSkins.Remove(tex);
+                        break;
+                    case "Adolescent":
+                        preview.featheredAdolescentSkins.Remove(tex);
+                        break;
+                    case "Baby":
+                        preview.featheredBabySkins.Remove(tex);
+                        break;
+                    case "NormalMap":
+                        preview.featheredNormalMapSkins.Remove(tex);
+                        break;
+                    case "Albino":
+                        preview.featheredAlbinoSkins.Remove(tex);
+                        break;
+                    case "Melanistic":
+                        preview.featheredMelanisticSkins.Remove(tex);
+                        break;
+                    case "Baby Albino":
+                        preview.featheredBabyAlbinoSkins.Remove(tex);
+                        break;
+                    case "Baby Melanistic":
+                        preview.featheredBabyMelanisticSkins.Remove(tex);
+                        break;
+                }
+            }
+            else
+            {
+                switch (type)
+                {
+                    case "Male":
+                        preview.scalyMaleSkins.Remove(tex);
+                        break;
+                    case "Female":
+                        preview.scalyFemaleSkins.Remove(tex);
+                        break;
+                    case "Male and Female":
+                        preview.scalyMaleSkins.Remove(tex);
+                        preview.scalyFemaleSkins.Remove(tex);
+                        break;
+                    case "Adolescent":
+                        preview.scalyAdolescentSkins.Remove(tex);
+                        break;
+                    case "Baby":
+                        preview.scalyBabySkins.Remove(tex);
+                        break;
+                    case "NormalMap":
+                        preview.scalyNormalMapsSkins.Remove(tex);
+                        break;
+                    case "Albino":
+                        preview.scalyAlbinoSkins.Remove(tex);
+                        break;
+                    case "Melanistic":
+                        preview.scalyMelanisticSkins.Remove(tex);
+                        break;
+                    case "Baby Albino":
+                        preview.scalyBabyAlbinoSkins.Remove(tex);
+                        break;
+                    case "Baby Melanistic":
+                        preview.scalyBabyMelanisticSkins.Remove(tex);
+                        break;
+                }
+            }
+        }
         public static Texture2D GetDefaultTextureFromPreviewByType(AnimalPreview preview, string type, bool feathered)
         {
             Texture2D result = new Texture2D(2, 2);
@@ -408,14 +678,11 @@ namespace PKMods
             }
             return GameObject.FindObjectOfType<AnimalPreview>().allSkins;
         }
-
         public void SaveTexture(Texture tex)
         {
             string text2 = Application.dataPath + "/Mods/Textures/";
             Directory.CreateDirectory(text2);
-
         }
-
         public static void SaveTextureToFile(Texture2D texture, string filename)
         {
             Texture2D texture2D = CreateCopy(texture);
@@ -436,5 +703,152 @@ namespace PKMods
             RenderTexture.active = null;
             return texture2D;
         }
+
+        //this method is not available in .net 3.5, so we have to make one ourself
+        public static void CopyTo(Stream input, Stream output)
+        {
+            byte[] buffer = new byte[16 * 1024]; // Fairly arbitrary size
+            int bytesRead;
+
+            while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                output.Write(buffer, 0, bytesRead);
+            }
+        }
+
+        private void AddSingleTexture(IncludedTexture includedTexture, AnimalPreview component)
+        {
+            Texture2D tex = new Texture2D(2, 2);
+            tex.name = string.Concat(new string[]
+            {
+            "T_",
+                includedTexture.Name.ToLower(),
+                "_",
+                includedTexture.Genus.ToLower(),
+                "_",
+                includedTexture.Integument.ToLower(),
+                "_",
+                includedTexture.Type.ToLower()
+            });
+            Debug.Log("tex.name: " + tex.name);
+            tex.LoadImage(includedTexture.Texture);
+            AddSkinByType(component, tex, includedTexture.Type, true);
+            component.allSkins.RemoveAll((Texture e) => e.name == tex.name);
+            component.allSkins.Add(tex);
+            loadedTextures.Add(GetFormattedTextureName(includedTexture), tex);
+        }
+        private void AddSingleTexture(string name, string genus, string integument, string type, Texture2D tex, AnimalPreview component)
+        {
+            tex.name = string.Concat(new string[]
+            {
+            "T_",
+                name.ToLower(),
+                "_",
+                genus.ToLower(),
+                "_",
+                integument.ToLower(),
+                "_",
+                type.ToLower()
+            });
+            Debug.Log("tex.name: " + tex.name);
+            AddSkinByType(component, tex, type, integument == "Feathered");
+            component.allSkins.RemoveAll((Texture e) => e.name == tex.name);
+            component.allSkins.Add(tex);
+            loadedTextures.Add(GetFormattedTextureName(name, genus, integument, type), tex);
+        }
+
+        private string GetFormattedTextureName(string name, string genus, string integument, string type)
+        {
+            return string.Concat(new string[]
+            {
+            "T_",
+                name.ToLower(),
+                "_",
+                genus.ToLower(),
+                "_",
+                integument.ToLower(),
+                "_",
+                type.ToLower()
+            });
+        }
+        private string GetFormattedTextureName(IncludedTexture includedTexture)
+        {
+            return string.Concat(new string[]
+             {
+            "T_",
+                includedTexture.Name.ToLower(),
+                "_",
+                includedTexture.Genus.ToLower(),
+                "_",
+                includedTexture.Integument.ToLower(),
+                "_",
+                includedTexture.Type.ToLower()
+            });
+        }
+        private IncludedTexture IncludedTextureFromName(string name)
+        {
+            IncludedTexture newIncludedTexture = new IncludedTexture();
+            var split = name.Split('_');
+            newIncludedTexture.Name = split[0];
+            newIncludedTexture.Genus = split[1];
+            newIncludedTexture.Integument = split[2];
+            newIncludedTexture.Type = split[3];
+            return newIncludedTexture;
+        }
+
+
+
+        [Serializable]
+        public class IncludedTexture
+        {
+            public static string[] AvailableGenus =
+            {
+            "Gallimimus",
+            "Tyrannosaurus",
+            "Velociraptor",
+            "Triceratops",
+            "Camarasaurus",
+            "Allosaurus",
+            "Stegosaurus",
+            "Dryosaurus"
+        };
+            public static string[] AvailableIntegument =
+            {
+            "Feathered",
+            "Scaly"
+        };
+            public static string[] AvailableType =
+            {
+            "Male",
+            "Female",
+            //"Male and Female",
+            "Baby",
+            "NormalMap",
+            "Adolescent",
+            "Albino",
+            "Melanistic",
+            "Baby Albino",
+            "Baby Melanistic",
+           
+        };
+            public IncludedTexture()
+            {
+                Texture = null;
+                Name = "NewSkin";
+                Genus = AvailableGenus[0];
+                Integument = AvailableIntegument[0];
+                Type = AvailableType[0];
+                IsCopyOf = -1;
+            }
+            public byte[] Texture;
+            public int IsCopyOf;
+            public string Name;
+            public string Genus;
+            public string Integument;
+            public string Type;
+
+        }
     }
+
+    
 }

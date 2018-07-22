@@ -5,6 +5,7 @@ using System.Text;
 using Harmony;
 using System.Reflection;
 using UnityEngine;
+using System.IO;
 
 namespace PKMods
 {
@@ -13,9 +14,16 @@ namespace PKMods
     {
         static void Load()
         {
+            //Debug.Log("Loading Harmony");
             //var harmony = HarmonyInstance.Create("com.github.pathos0001.mods.pk");
             //harmony.PatchAll(Assembly.GetExecutingAssembly());
             Debug.Log("Loading PKMods");
+            Debug.Log("Application.dataPath: " + Application.dataPath);
+
+            //create these folders if they dont allready exist
+            Directory.CreateDirectory(Application.dataPath + "\\Mods");
+            Directory.CreateDirectory(Application.dataPath + "\\Mods\\Dependencies");
+
             if (GameObject.Find("ModHolder"))
             {
                 Debug.Log("Destroying previous holder");
@@ -27,6 +35,16 @@ namespace PKMods
 
             GameObject.DontDestroyOnLoad(modholder);
 
+            //check dependencies
+            /*
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var assembly in assemblies)
+            {
+                Console.WriteLine(assembly.GetName());
+            }
+            */
+
         }
+
     }
 }

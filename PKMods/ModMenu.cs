@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
@@ -12,6 +13,8 @@ namespace PKMods
         public static string MOD_BASE_DIRECTORY = Application.dataPath + "\\Mods\\";
         private GameObject modMenu;
         private GameObject skinsPanel;
+        private Dropdown TexturePackListDropdown;
+
         private GameObject MorphPanel;
 
         private Text ExportTextureResultText;
@@ -26,6 +29,18 @@ namespace PKMods
             SetupMenu();
             SetupTextureMods();
 
+
+            if (!Directory.Exists(MOD_BASE_DIRECTORY))//checking if it exists is probably redundant, but it looks good aesthetically
+            {
+                Directory.CreateDirectory(MOD_BASE_DIRECTORY);
+            }
+            if (!Directory.Exists(TexturePackMod.TEXTUREPACK_BASE_DIRECTORY))
+            {
+                Directory.CreateDirectory(TexturePackMod.TEXTUREPACK_BASE_DIRECTORY);
+            }
+
+            modMenu.SetActive(true); //show after injection
+
             Debug.Log("Menu loaded!");
         }
 
@@ -33,8 +48,13 @@ namespace PKMods
         {
             if(Input.GetKeyDown(KeyCode.F1))
             {
-                SetupTextureMods();
                 modMenu.SetActive(!modMenu.activeSelf);
+                if (modMenu.active)
+                {
+                    //SetupTextureMods();
+                    var texturePackMod = this.GetComponent<TexturePackMod>();
+                    texturePackMod.ScanTexturePacks();
+                }
             }
         }
 
@@ -80,6 +100,11 @@ namespace PKMods
             {
                 modMenu.SetActive(false);
             });
+
+
+
+
+
             modMenu.SetActive(false);
         }
 
@@ -159,12 +184,26 @@ namespace PKMods
                     ExportTextureResultText.text = "Invalid selection";
                 }
             });
+            TexturePackListDropdown = skinsPanel.transform.FindDeepChild("TexturePacksDropdown").GetComponentInChildren<Dropdown>();
 
+            var texturePackMod = this.GetComponent<TexturePackMod>();
+            texturePackMod.OnTexturepacksAdded = (result) =>
+            {
+                var newOptions = new List<Dropdown.OptionData>();
+                for (int i = 0; i < texturePackMod.loadedTexturePackNames.Count; i++)
+                {
+                    newOptions.Add(new Dropdown.OptionData(texturePackMod.loadedTexturePackNames[i]));
+                }
+                TexturePackListDropdown.options = newOptions;
+            };
+            texturePackMod.ScanTexturePacks();
 
         }
 
 
     }
+
+    
 
     public static class TransformDeepChildExtension
     {
