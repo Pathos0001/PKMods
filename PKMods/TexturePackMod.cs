@@ -325,10 +325,11 @@ namespace PKMods
                             if (nameFound != null)
                             {
                                 component.featheredSkinNames.Remove(nameFound);
+                                Debug.Log(nameFound + " removed");
                             }
                             else
                             {
-                                Debug.Log("Name not found for: " + data.Name.ToLower());
+                                //Debug.Log("Name not found for: " + data.Name.ToLower());
                             }
                         }
                         else
@@ -337,10 +338,11 @@ namespace PKMods
                             if (nameFound != null)
                             {
                                 component.scalySkinNames.Remove(nameFound);
+                                Debug.Log(nameFound + " removed");
                             }
                             else
                             {
-                                Debug.Log("Name not found for: " + data.Name.ToLower());
+                                //Debug.Log("Name not found for: " + data.Name.ToLower());
                             }
                         }
                     }
