@@ -121,8 +121,7 @@ namespace PKMods
                 string name = skinName.Split('\n')[1];
                 string integument = skinName.Split('\n')[2];
 
-                genus = genus.ToLower();
-                AnimalPreview component = allAnimals.First((GameObject e) => e.name.Trim().ToLower() == genus).GetComponent<AnimalPreview>();
+                AnimalPreview component = allAnimals.First((GameObject e) => e.name.Trim().ToLower() == genus.ToLower()).GetComponent<AnimalPreview>();
                 if (!component)
                     Debug.Log("AnimalPreview component is null: " + genus);
 
@@ -130,11 +129,11 @@ namespace PKMods
                 {
                     string typeName = IncludedTexture.AvailableType[i];
                     Debug.Log("typeName: " + typeName);
-                    var item = texturePack.FirstOrDefault(e => e.Name == name && e.Genus.ToLower() == genus && e.Type.ToLower() == typeName.ToLower() && e.Integument.ToLower() == integument.ToLower());
+                    var item = texturePack.FirstOrDefault(e => e.Name == name && e.Genus.ToLower() == genus.ToLower() && e.Type.ToLower() == typeName.ToLower() && e.Integument.ToLower() == integument.ToLower());
                     if (item != null)
                     {
                         AddSingleTexture(item, component);
-                        if (item.Integument == "Feathered")
+                        if (item.Integument.ToLower() == "feathered")
                         {
                             if (!component.featheredSkinNames.Contains(item.Name))
                             {
@@ -153,7 +152,7 @@ namespace PKMods
                     else
                     {
                         Texture defaultTexture;
-                        if (integument == "Feathered")
+                        if (integument.ToLower() == "feathered")
                         {
                             defaultTexture = GetDefaultTextureFromPreviewByType(component, typeName, true);
                         }
@@ -213,6 +212,7 @@ namespace PKMods
                     {
                         Console.WriteLine("Deserializing Binary");
                         BinaryFormatter formatter = new BinaryFormatter();
+                        //formatter.Binder = new typeconvertor();
                         includedTextures = (List<IncludedTexture>)formatter.Deserialize(fileStream);
                     }
                     catch (SerializationException e2)
@@ -226,25 +226,39 @@ namespace PKMods
                     s.Start();
 
                     string path = Application.dataPath;
-                    SevenZipCompressor.SetLibraryPath(path + "\\Mods\\Dependencies" + "\\7za.dll");
+                    path += "\\Mods\\Dependencies" + "\\7za.dll";
+                    Debug.Log(path);
+                    SevenZipCompressor.SetLibraryPath(path);
+
+                    byte[] uncompressedSizeBytes = new byte[8];
+                    fileStream.Read(uncompressedSizeBytes, 0, 8);
+                    var uncompressedSize = BitConverter.ToUInt64(uncompressedSizeBytes, 0);
+                    Debug.Log("Uncomoressed size is " + uncompressedSize.ToString());
+
 
                     MemoryStream m2 = new MemoryStream();
                     CopyTo(fileStream, m2);
+
 
                     //todo: close filestream to save memory?
                     m2.Position = 0;
                     Debug.Log("m2.Length:" + m2.Length);
 
                     MemoryStream mem = new MemoryStream();
-                    using (var extractor = new SevenZipExtractor(m2))
+                    //using (var extractor = new SevenZipExtractor(m2))
                     {
                         Debug.Log("Extracting 7z stream");
                         try
                         {
-                            Debug.Log("FilesCount:" + extractor.FilesCount);
-                            Debug.Log("Format:" + extractor.Format);
+                            //Debug.Log("FilesCount:" + extractor.FilesCount);
+                            //Debug.Log("Format:" + extractor.Format);
 
-                            extractor.ExtractFile(0, mem);
+                            var compressed = ReadFully(m2);
+
+                            var decompressedBuffer = new byte[uncompressedSize];
+                            var result = lzma.decompressBufferFixed(compressed, ref decompressedBuffer, false, false, (int)uncompressedSize);
+                            Debug.Log("result: " + result);
+                            //extractor.ExtractFile(0, mem);
                         }
                         catch(Exception e)
                         {
@@ -254,6 +268,7 @@ namespace PKMods
                     mem.Position = 0;
 
                     BinaryFormatter formatter = new BinaryFormatter();
+                    //formatter.Binder = new typeconvertor();
                     includedTextures = (List<IncludedTexture>)formatter.Deserialize(mem);
 
                     s.Stop();
@@ -271,15 +286,21 @@ namespace PKMods
             if (loadedTextures == null)
                 loadedTextures = new Dictionary<string, Texture2D>();
 
-            List<GameObject> allAnimals = UnityEngine.Object.FindObjectOfType<ObjectHolderSelection>().allAnimals;
-            if (FindObjectOfType<ObjectHolderSelection>() == null || allAnimals == null)
+            if (FindObjectOfType<ObjectHolderSelection>() == null || FindObjectOfType<ObjectHolderSelection>().allAnimals == null)
+            {
+                Debug.Log("allAnimals null");
                 return;
+            }
+
+            List<GameObject> allAnimals = UnityEngine.Object.FindObjectOfType<ObjectHolderSelection>().allAnimals;
 
             foreach (var singleTexture in loadedTextures)
             {
+                Debug.Log("Removing: " + singleTexture.Key);
                 var data = IncludedTextureFromName(singleTexture.Key);
+                Debug.Log(data.Genus + " - " + data.Integument + " - " + data.Name + " - " + data.Type);
                 AnimalPreview component = allAnimals.FirstOrDefault(e => e.name.Trim().ToLower() == data.Genus.ToLower()).GetComponent<AnimalPreview>();
-                if (!component)
+                if (component == null)
                 {
                     Debug.Log("No AnimalPreview for this genus");
                 }
@@ -372,6 +393,7 @@ namespace PKMods
         }
         public static void RemoveSkinByType(AnimalPreview preview, Texture2D tex, string type, bool feathered)
         {
+            Debug.Log("RemoveSkinByType");
             if (feathered)
             {
                 switch (type)
@@ -732,7 +754,7 @@ namespace PKMods
             });
             Debug.Log("tex.name: " + tex.name);
             tex.LoadImage(includedTexture.Texture);
-            AddSkinByType(component, tex, includedTexture.Type, true);
+            AddSkinByType(component, tex, includedTexture.Type, includedTexture.Integument.ToLower() == "feathered");
             component.allSkins.RemoveAll((Texture e) => e.name == tex.name);
             component.allSkins.Add(tex);
             loadedTextures.Add(GetFormattedTextureName(includedTexture), tex);
@@ -751,7 +773,7 @@ namespace PKMods
                 type.ToLower()
             });
             Debug.Log("tex.name: " + tex.name);
-            AddSkinByType(component, tex, type, integument == "Feathered");
+            AddSkinByType(component, tex, type, integument.ToLower() == "feathered");
             component.allSkins.RemoveAll((Texture e) => e.name == tex.name);
             component.allSkins.Add(tex);
             loadedTextures.Add(GetFormattedTextureName(name, genus, integument, type), tex);
@@ -796,59 +818,51 @@ namespace PKMods
             return newIncludedTexture;
         }
 
-
-
-        [Serializable]
-        public class IncludedTexture
+        public static byte[] ReadFully(Stream input)
         {
-            public static string[] AvailableGenus =
+            byte[] buffer = new byte[16 * 1024];
+            using (MemoryStream ms = new MemoryStream())
             {
-            "Gallimimus",
-            "Tyrannosaurus",
-            "Velociraptor",
-            "Triceratops",
-            "Camarasaurus",
-            "Allosaurus",
-            "Stegosaurus",
-            "Dryosaurus"
-        };
-            public static string[] AvailableIntegument =
-            {
-            "Feathered",
-            "Scaly"
-        };
-            public static string[] AvailableType =
-            {
-            "Male",
-            "Female",
-            //"Male and Female",
-            "Baby",
-            "NormalMap",
-            "Adolescent",
-            "Albino",
-            "Melanistic",
-            "Baby Albino",
-            "Baby Melanistic",
-           
-        };
-            public IncludedTexture()
-            {
-                Texture = null;
-                Name = "NewSkin";
-                Genus = AvailableGenus[0];
-                Integument = AvailableIntegument[0];
-                Type = AvailableType[0];
-                IsCopyOf = -1;
+                int read;
+                while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    ms.Write(buffer, 0, read);
+                }
+                return ms.ToArray();
             }
-            public byte[] Texture;
-            public int IsCopyOf;
-            public string Name;
-            public string Genus;
-            public string Integument;
-            public string Type;
-
         }
+
+
     }
 
+    /*
+    sealed class typeconvertor : SerializationBinder
+    {
+        public override Type BindToType(string assemblyName, string typeName)
+        {
+            Type returntype = null;
+            if (assemblyName == "TexturePackCreator, Version=1.0.0.0, Culture = neutral, PublicKeyToken = null")
+            {
+                assemblyName = Assembly.GetExecutingAssembly().FullName;
+                returntype =
+                    Type.GetType(String.Format("{0}, {1}",
+                    typeName, assemblyName));
+                return returntype;
+            }
+
+            if (typeName == "System.Collections.Generic.List`1[[Mousemove.Curve,draw on desktop, Version = 1.0.0.0, Culture = neutral,PublicKeyToken = null]]")
+            {
+                typeName =
+                    typeName.Replace("draw on desktop,Version = 1.0.0.0, Culture = neutral, PublicKeyToken = null",Assembly.GetExecutingAssembly().FullName);
+                returntype =
+                    Type.GetType(String.Format("{0}, {1}",
+                    typeName, assemblyName));
+                return returntype;
+            }
+            return returntype;
+        }
+    }
+    */
     
+
 }
