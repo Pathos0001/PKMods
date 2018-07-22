@@ -9,10 +9,9 @@ using System.IO;
 
 namespace PKMods
 {
-
     public class Loader
     {
-        static void Load()
+        public static void Load()
         {
             //Debug.Log("Loading Harmony");
             //var harmony = HarmonyInstance.Create("com.github.pathos0001.mods.pk");

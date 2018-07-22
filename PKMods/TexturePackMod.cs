@@ -23,6 +23,8 @@ namespace PKMods
         public static string ENCODING_BINARY = "BIN";
         public static string ENCODING_BINARY_COMPRESSED = "CMP";
 
+        public static string TEXTURE_NAME_DELIMITER = "=";
+
         public Action<bool> OnTexturepacksAdded;
 
         public void Start()
@@ -128,7 +130,7 @@ namespace PKMods
                 for (int i = 0; i < IncludedTexture.AvailableType.Length; i++)
                 {
                     string typeName = IncludedTexture.AvailableType[i];
-                    Debug.Log("typeName: " + typeName);
+                    //Debug.Log("typeName: " + typeName);
                     var item = texturePack.FirstOrDefault(e => e.Name == name && e.Genus.ToLower() == genus.ToLower() && e.Type.ToLower() == typeName.ToLower() && e.Integument.ToLower() == integument.ToLower());
                     if (item != null)
                     {
@@ -299,15 +301,56 @@ namespace PKMods
                 Debug.Log("Removing: " + singleTexture.Key);
                 var data = IncludedTextureFromName(singleTexture.Key);
                 Debug.Log(data.Genus + " - " + data.Integument + " - " + data.Name + " - " + data.Type);
-                AnimalPreview component = allAnimals.FirstOrDefault(e => e.name.Trim().ToLower() == data.Genus.ToLower()).GetComponent<AnimalPreview>();
-                if (component == null)
+                if (allAnimals == null)
                 {
-                    Debug.Log("No AnimalPreview for this genus");
+                    Debug.Log("allAnimals is null?");
+                    continue;
+                }
+                var previewGameobject = allAnimals.FirstOrDefault(e => e.name.Trim().ToLower() == data.Genus.ToLower());
+                if (previewGameobject != null)
+                {
+                    AnimalPreview component = previewGameobject.GetComponent<AnimalPreview>();
+                    if (component == null)
+                    {
+                        Debug.Log("No AnimalPreview component for this genus: " + data.Genus.ToLower());
+                    }
+                    else
+                    {
+                        RemoveSkinByType(component, singleTexture.Value, data.Type, data.Integument.ToLower() == "feathered");
+
+                        if (data.Integument.ToLower() == "feathered")
+                        {
+                            //scan case insensitive
+                            var nameFound = component.featheredSkinNames.FirstOrDefault(e => e.ToLower() == data.Name.ToLower());
+                            if (nameFound != null)
+                            {
+                                component.featheredSkinNames.Remove(nameFound);
+                            }
+                            else
+                            {
+                                Debug.Log("Name not found for: " + data.Name.ToLower());
+                            }
+                        }
+                        else
+                        {
+                            var nameFound = component.scalySkinNames.FirstOrDefault(e => e.ToLower() == data.Name.ToLower());
+                            if (nameFound != null)
+                            {
+                                component.scalySkinNames.Remove(nameFound);
+                            }
+                            else
+                            {
+                                Debug.Log("Name not found for: " + data.Name.ToLower());
+                            }
+                        }
+                    }
                 }
                 else
                 {
-                    RemoveSkinByType(component, singleTexture.Value, data.Type, data.Integument.ToLower() == "feathered");
+                    Debug.Log("No AnimalPreview for this genus: " + data.Genus.ToLower());
                 }
+                
+                
             }
             loadedTextures.Clear();
         }
@@ -393,41 +436,54 @@ namespace PKMods
         }
         public static void RemoveSkinByType(AnimalPreview preview, Texture2D tex, string type, bool feathered)
         {
-            Debug.Log("RemoveSkinByType");
+            Debug.Log("RemoveSkinByType: " + type);
             if (feathered)
             {
                 switch (type)
                 {
                     case "Male":
+                    case "male":
                         preview.featheredMaleSkins.Remove(tex);
                         break;
                     case "Female":
+                    case "female":
                         preview.featheredFemaleSkins.Remove(tex);
                         break;
                     case "Male and Female":
+                    case "male and female":
                         preview.featheredMaleSkins.Remove(tex);
                         preview.featheredFemaleSkins.Remove(tex);
                         break;
                     case "Adolescent":
+                    case "adolescent":
                         preview.featheredAdolescentSkins.Remove(tex);
                         break;
                     case "Baby":
+                    case "baby":
                         preview.featheredBabySkins.Remove(tex);
                         break;
                     case "NormalMap":
+                    case "normalmap":
                         preview.featheredNormalMapSkins.Remove(tex);
                         break;
                     case "Albino":
+                    case "albino":
                         preview.featheredAlbinoSkins.Remove(tex);
                         break;
                     case "Melanistic":
+                    case "melanistic":
                         preview.featheredMelanisticSkins.Remove(tex);
                         break;
                     case "Baby Albino":
+                    case "baby albino":
                         preview.featheredBabyAlbinoSkins.Remove(tex);
                         break;
                     case "Baby Melanistic":
+                    case "baby melanistic":
                         preview.featheredBabyMelanisticSkins.Remove(tex);
+                        break;
+                    default:
+                        Debug.Log("RemoveSkinByType hit default. Check the name!");
                         break;
                 }
             }
@@ -436,35 +492,48 @@ namespace PKMods
                 switch (type)
                 {
                     case "Male":
+                    case "male":
                         preview.scalyMaleSkins.Remove(tex);
                         break;
                     case "Female":
+                    case "female":
                         preview.scalyFemaleSkins.Remove(tex);
                         break;
                     case "Male and Female":
+                    case "male and female":
                         preview.scalyMaleSkins.Remove(tex);
                         preview.scalyFemaleSkins.Remove(tex);
                         break;
                     case "Adolescent":
+                    case "adolescent":
                         preview.scalyAdolescentSkins.Remove(tex);
                         break;
                     case "Baby":
+                    case "baby":
                         preview.scalyBabySkins.Remove(tex);
                         break;
                     case "NormalMap":
+                    case "normalmap":
                         preview.scalyNormalMapsSkins.Remove(tex);
                         break;
                     case "Albino":
+                    case "albino":
                         preview.scalyAlbinoSkins.Remove(tex);
                         break;
                     case "Melanistic":
+                    case "melanistic":
                         preview.scalyMelanisticSkins.Remove(tex);
                         break;
                     case "Baby Albino":
+                    case "baby albino":
                         preview.scalyBabyAlbinoSkins.Remove(tex);
                         break;
                     case "Baby Melanistic":
+                    case "baby melanistic":
                         preview.scalyBabyMelanisticSkins.Remove(tex);
+                        break;
+                    default:
+                        Debug.Log("RemoveSkinByType hit default. Check the name!");
                         break;
                 }
             }
@@ -743,13 +812,13 @@ namespace PKMods
             Texture2D tex = new Texture2D(2, 2);
             tex.name = string.Concat(new string[]
             {
-            "T_",
+            "T" + TEXTURE_NAME_DELIMITER,
                 includedTexture.Name.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 includedTexture.Genus.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 includedTexture.Integument.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 includedTexture.Type.ToLower()
             });
             Debug.Log("tex.name: " + tex.name);
@@ -763,13 +832,13 @@ namespace PKMods
         {
             tex.name = string.Concat(new string[]
             {
-            "T_",
+            "T" + TEXTURE_NAME_DELIMITER,
                 name.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 genus.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 integument.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 type.ToLower()
             });
             Debug.Log("tex.name: " + tex.name);
@@ -783,13 +852,13 @@ namespace PKMods
         {
             return string.Concat(new string[]
             {
-            "T_",
+            "T" + TEXTURE_NAME_DELIMITER,
                 name.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 genus.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 integument.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 type.ToLower()
             });
         }
@@ -797,24 +866,24 @@ namespace PKMods
         {
             return string.Concat(new string[]
              {
-            "T_",
+            "T" + TEXTURE_NAME_DELIMITER,
                 includedTexture.Name.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 includedTexture.Genus.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 includedTexture.Integument.ToLower(),
-                "_",
+                TEXTURE_NAME_DELIMITER,
                 includedTexture.Type.ToLower()
             });
         }
         private IncludedTexture IncludedTextureFromName(string name)
         {
             IncludedTexture newIncludedTexture = new IncludedTexture();
-            var split = name.Split('_');
-            newIncludedTexture.Name = split[0];
-            newIncludedTexture.Genus = split[1];
-            newIncludedTexture.Integument = split[2];
-            newIncludedTexture.Type = split[3];
+            var split = name.Split('=');
+            newIncludedTexture.Name = split[1];
+            newIncludedTexture.Genus = split[2];
+            newIncludedTexture.Integument = split[3];
+            newIncludedTexture.Type = split[4];
             return newIncludedTexture;
         }
 

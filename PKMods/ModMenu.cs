@@ -21,6 +21,8 @@ namespace PKMods
         private RawImage texturePreview;
         private Dropdown ExportSkinTextureSelectDropdown;
 
+        private bool setupSuccess = false;
+
         void Start()
         {
             Application.runInBackground = true;
@@ -39,7 +41,7 @@ namespace PKMods
                 Directory.CreateDirectory(TexturePackMod.TEXTUREPACK_BASE_DIRECTORY);
             }
 
-            modMenu.SetActive(true); //show after injection
+            //modMenu.SetActive(true); //show after injection
 
             Debug.Log("Menu loaded!");
         }
@@ -53,8 +55,16 @@ namespace PKMods
                 {
                     //SetupTextureMods();
                     var texturePackMod = this.GetComponent<TexturePackMod>();
-                    texturePackMod.ScanTexturePacks();
+
+                    if (!setupSuccess)
+                        SetupTextureMods();
+
                 }
+            }
+            if (Input.GetKeyDown(KeyCode.F2))
+            {
+                var texturePackMod = this.GetComponent<TexturePackMod>();
+                texturePackMod.ScanTexturePacks();
             }
         }
 
@@ -108,7 +118,7 @@ namespace PKMods
             modMenu.SetActive(false);
         }
 
-        private void SetupTextureMods()
+        public void SetupTextureMods()
         {
             Debug.Log("SetupTextureMods");
 
@@ -185,6 +195,8 @@ namespace PKMods
                 }
             });
             TexturePackListDropdown = skinsPanel.transform.FindDeepChild("TexturePacksDropdown").GetComponentInChildren<Dropdown>();
+
+            setupSuccess = true;
 
             var texturePackMod = this.GetComponent<TexturePackMod>();
             texturePackMod.OnTexturepacksAdded = (result) =>
