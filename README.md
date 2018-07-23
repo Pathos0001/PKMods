@@ -2,7 +2,7 @@
 Various mods for Prehistoric Kingdom
 Still early in development. again
 
-![Ugly UI cuz im not an artist](ReadmeImages/UglyUI.jpg)
+![Ugly UI cuz im not an artist](https://i.imgur.com/3P4JDGB.jpg)
 
 #### Current Functionality
 - Save textures
