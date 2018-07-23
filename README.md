@@ -35,7 +35,7 @@ If you would prefer to fork and/or compile yourself, youll need to copy some fil
 - liblzma.dll to Prehistoric Kingdom_Data/Mono (allows for compressed texturepacks)
 
 #### Manual Injection
-In the event a newer version of the game is released (and you dont feel like waiting for a patch), or you just feel like doing it youself, you can do EITHER of the following
+In the event a newer version of the game is released (and you dont want to wait for a patch), or you just feel like doing it youself, you can do EITHER of the following
 
 - Use a mono injector like the one included. Check the Inject.cmd for an example command to inject, or run it directly.
 or
