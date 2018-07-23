@@ -1,7 +1,7 @@
 # PKMods
 
-Various mods for Prehistoric Kingdom
-Still early in development.
+Modding platform for Prehistoric Kingdom.
+
 ## PKMODS is in very early development so anything can break at anytime for anyreason, and nothing is guarenteed at all
 
 ![Ugly UI cuz im not an artist](https://i.imgur.com/bHLDyW5.png)
