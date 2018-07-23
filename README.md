@@ -22,10 +22,9 @@ Compile from source or download the latest release, then.
 ### From Precompiled Release:
  - From the release you downloaded, copy the Prehistoric Kingdom_Data contents to your local Prehistoric Kingdom_Data directory.
 
-After injecting, start a game and press F1 to pull up the menu.
+Start a game and press F1 to pull up the menu.
 Press f2 to reload TexturePacks;
 Thats it, enjoy the modding!
-
 
 
 If you would prefer to fork and/or compile yourself, youll need to copy some files,
@@ -46,6 +45,11 @@ Assembly.LoadFrom(Application.dataPath + "/Mods/PKMods.dll").GetType("PKMods.Loa
 ```
 
 ## Adding texture packs
-...
+Download the latest release of the external texturepack creator here:
+https://github.com/Pathos0001/TexturePackCreator
+Then create a texturepack.
+
 And add them to the Mods/Texturepacks/ folder
+
+
 
