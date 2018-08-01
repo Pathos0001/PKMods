@@ -258,8 +258,9 @@ namespace PKMods
                             var compressed = ReadFully(m2);
 
                             var decompressedBuffer = new byte[uncompressedSize];
-                            var result = lzma.decompressBufferFixed(compressed, ref decompressedBuffer, false, false, (int)uncompressedSize);
-                            Debug.Log("result: " + result);
+                            //var result = lzma.decompressBufferFixed(compressed, ref decompressedBuffer, false, false, (int)uncompressedSize);
+                            Debug.LogError("NO LZMA DECOMPRESSION");
+                            //Debug.Log("result: " + result);
                             //extractor.ExtractFile(0, mem);
                         }
                         catch(Exception e)
