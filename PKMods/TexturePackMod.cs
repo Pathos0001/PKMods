@@ -1,4 +1,5 @@
 ﻿using SevenZip;
+using SharpCompress.Readers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -41,14 +42,14 @@ namespace PKMods
             }
             if (!found)
             {
-                Debug.LogError("PKMODS ERROR:  File 7za.dll is missing from the Managed subfolder! In order to load compressed files, please copy it over and restart the game.");
+                //Debug.LogError("PKMODS ERROR:  File 7za.dll is missing from the Managed subfolder! In order to load compressed files, please copy it over and restart the game.");
             }
 
 
             string[] files = Directory.GetFiles(Application.dataPath + "\\Mods\\Dependencies", "7za.dll");
             if (files.Length == 0)
             {
-                Debug.LogError("PKMODS ERROR: File 7za.dll is missing from the Mods/Dependencies subfolder! In order to load compressed files, please copy it over and restart the game.");
+                //Debug.LogError("PKMODS ERROR: File 7za.dll is missing from the Mods/Dependencies subfolder! In order to load compressed files, please copy it over and restart the game.");
             }
 
             //manually check for SevenZipSharp assembly?
@@ -228,9 +229,9 @@ namespace PKMods
                     s.Start();
 
                     string path = Application.dataPath;
-                    path += "\\Mods\\Dependencies" + "\\7za.dll";
-                    Debug.Log(path);
-                    SevenZipCompressor.SetLibraryPath(path);
+                    //path += "\\Mods\\Dependencies" + "\\7za.dll";
+                    //Debug.Log(path);
+                    //SevenZipCompressor.SetLibraryPath(path);
 
                     byte[] uncompressedSizeBytes = new byte[8];
                     fileStream.Read(uncompressedSizeBytes, 0, 8);
@@ -247,6 +248,36 @@ namespace PKMods
                     Debug.Log("m2.Length:" + m2.Length);
 
                     MemoryStream mem = new MemoryStream();
+
+
+                    var decompressedBuffer = new byte[uncompressedSize];
+                    //using (Stream stream = File.OpenRead("Tar.tar.bz2"))
+                    var stopwatch = new System.Diagnostics.Stopwatch();
+                    stopwatch.Start();
+                    try
+                    {
+                        using (var reader = ReaderFactory.Open(m2))
+                        {
+                            while (reader.MoveToNextEntry())
+                            {
+                                if (!reader.Entry.IsDirectory)
+                                {
+                                    using (var entryStream = reader.OpenEntryStream())
+                                    {
+                                        entryStream.Read(decompressedBuffer, 0, decompressedBuffer.Length);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch(Exception e)
+                    {
+                        Debug.LogError("Decompression Error: " + e.ToString());
+                    }
+
+                    stopwatch.Stop();
+                    Debug.Log("Elapsed Time: " + stopwatch.ElapsedMilliseconds);
+                    /*
                     //using (var extractor = new SevenZipExtractor(m2))
                     {
                         Debug.Log("Extracting 7z stream");
@@ -268,11 +299,15 @@ namespace PKMods
                             Debug.Log(e.ToString());
                         }
                     }
+                    */
                     mem.Position = 0;
 
                     BinaryFormatter formatter = new BinaryFormatter();
                     //formatter.Binder = new typeconvertor();
-                    includedTextures = (List<IncludedTexture>)formatter.Deserialize(mem);
+                    using (var msd = new MemoryStream(decompressedBuffer))
+                    {
+                        includedTextures = (List<IncludedTexture>)formatter.Deserialize(msd);
+                    }
 
                     s.Stop();
                     Console.WriteLine("Extraction took: " + s.ElapsedMilliseconds);

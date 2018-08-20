@@ -29,8 +29,11 @@ namespace PKMods
                 GameObject.Destroy(GameObject.Find("ModHolder"));
             }
             var modholder = new GameObject("ModHolder");
-            modholder.AddComponent<ModMenu>();
+
             modholder.AddComponent<TexturePackMod>();
+            modholder.AddComponent<ModMenu>();
+            modholder.AddComponent<BrowsePanel>();
+
 
             GameObject.DontDestroyOnLoad(modholder);
 

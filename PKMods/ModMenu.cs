@@ -10,18 +10,22 @@ namespace PKMods
 {
     class ModMenu : MonoBehaviour
     {
+        public static string TEXTUREPACK_BASE_DIRECTORY = Application.dataPath + "\\Mods\\Texturepacks";
         public static string MOD_BASE_DIRECTORY = Application.dataPath + "\\Mods\\";
         private GameObject modMenu;
-        private GameObject skinsPanel;
         private Dropdown TexturePackListDropdown;
 
+        private GameObject skinsPanel;
         private GameObject MorphPanel;
+        private GameObject SearchPanel;
 
         private Text ExportTextureResultText;
         private RawImage texturePreview;
         private Dropdown ExportSkinTextureSelectDropdown;
 
         private bool setupSuccess = false;
+
+        private bool disabledOnStart = false;
 
         void Start()
         {
@@ -68,6 +72,18 @@ namespace PKMods
             }
         }
 
+        void LateUpdate()
+        {
+            if(!disabledOnStart)
+            {
+                disabledOnStart = true;
+
+
+                skinsPanel.SetActive(false);
+                modMenu.SetActive(false);
+            }
+        }
+
         public void LoadModMenuAssetbundle()
         {
             var modMenuAssetbundleDirectory = MOD_BASE_DIRECTORY + "modmenu.ab";
@@ -92,19 +108,30 @@ namespace PKMods
         {
             skinsPanel = modMenu.transform.FindDeepChild("SkinsPanel").gameObject;
             MorphPanel = modMenu.transform.FindDeepChild("MorphPanel").gameObject;
+            SearchPanel = modMenu.transform.FindDeepChild("BrowsePanel").gameObject;
 
             var skinsButton = modMenu.transform.FindDeepChild("SkinsButton");
             skinsButton.GetComponentInChildren<Button>().onClick.AddListener(() =>
             {
+                SearchPanel.SetActive(false);
                 skinsPanel.SetActive(true);
                 MorphPanel.SetActive(false);
             });
             var morphButton = modMenu.transform.FindDeepChild("MorphButton");
             morphButton.GetComponentInChildren<Button>().onClick.AddListener(() =>
             {
+                SearchPanel.SetActive(false);
                 MorphPanel.SetActive(true);
                 skinsPanel.SetActive(false);
             });
+            var browseButton = modMenu.transform.FindDeepChild("BrowseButton");
+            browseButton.GetComponentInChildren<Button>().onClick.AddListener(() =>
+            {
+                MorphPanel.SetActive(false);
+                skinsPanel.SetActive(false);
+                SearchPanel.SetActive(true);
+            });
+
             var CloseButton = modMenu.transform.FindDeepChild("CloseButton");
             CloseButton.GetComponentInChildren<Button>().onClick.AddListener(() =>
             {
@@ -114,8 +141,6 @@ namespace PKMods
 
 
 
-
-            modMenu.SetActive(false);
         }
 
         public void SetupTextureMods()
@@ -159,7 +184,7 @@ namespace PKMods
             {
                 try
                 {
-                    texturePreview.texture = FindObjectOfType<ObjectHolderSelection>().allAnimals[newValue].GetComponentInChildren<AnimalPreview>().allSkins[newValue];
+                    texturePreview.texture = FindObjectOfType<ObjectHolderSelection>().allAnimals[ExportSkinAnimalSelectDropdown.value].GetComponentInChildren<AnimalPreview>().allSkins[newValue];
                 }
                 catch(Exception e)
                 {
@@ -209,6 +234,21 @@ namespace PKMods
                 TexturePackListDropdown.options = newOptions;
             };
             texturePackMod.ScanTexturePacks();
+
+            var deleteButton = skinsPanel.transform.FindDeepChild("DeleteButton").GetComponentInChildren<Button>();
+            deleteButton.onClick.AddListener(() =>
+            {
+                if (TexturePackListDropdown.value > -1)
+                {
+                    var filename = TEXTUREPACK_BASE_DIRECTORY + "\\" + texturePackMod.loadedTexturePackNames[TexturePackListDropdown.value] + ".pktex";
+                    Debug.Log(filename);
+                    if (File.Exists(filename))
+                    {
+                        File.Delete(filename);
+                        this.gameObject.GetComponentInChildren<TexturePackMod>().ScanTexturePacks();
+                    }
+                }
+            });
 
         }
 
