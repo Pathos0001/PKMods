@@ -46,12 +46,14 @@ Assembly.LoadFrom(Application.dataPath + "/Mods/PKMods.dll").GetType("PKMods.Loa
 ```
 You may have to add a reference to System.Reflection.
 
-## Adding texture packs
+## Adding texture packs locally
 Download the latest release of the external texturepack creator here:
 https://github.com/Pathos0001/TexturePackCreator
 Then create a texturepack.
 
 And add them to the Mods/Texturepacks/ folder
 
+## Adding texture packs to the database
 
+This feature has not been added yet, but check back on the PKModsDevKit here https://github.com/Pathos0001/PKModsDevkit
 
