@@ -9,6 +9,7 @@ Modding platform for Prehistoric Kingdom.
 #### Current Functionality
 - Save textures
 - Load TexturePack
+- (Proof of concept) Share skins to a database, hosted on Firebase. Press the Browse button.
 
 #### In Progress
 - Save/Load textures on demand for the selected animal
