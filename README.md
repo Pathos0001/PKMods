@@ -44,6 +44,7 @@ or
 ```csharp
 Assembly.LoadFrom(Application.dataPath + "/Mods/PKMods.dll").GetType("PKMods.Loader").GetMethod("Load").Invoke(null, null);
 ```
+You may have to add a reference to System.Reflection.
 
 ## Adding texture packs
 Download the latest release of the external texturepack creator here:
