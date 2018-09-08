@@ -32,7 +32,7 @@ If you would prefer to fork and/or compile yourself, youll need to copy some fil
 - TexturePackData.dll to Prehistoric Kingdom_Data/Managed  (allows for binary serialized and compressed texturepacks)
 - modmenu.ab to Prehistoric Kingdom_Data/Mods (This is an assetbundle of the Mod UI. The source is in the DevKit Git)
 - PKMods.dll  to Prehistoric Kingdom_Data/Mods (This is the compiled code of the mods)
-- liblzma.dll to Prehistoric Kingdom_Data/Mono (allows for compressed texturepacks)
+- ~~liblzma.dll to Prehistoric Kingdom_Data/Mono (allows for compressed texturepacks)~~ compression removed, have not found an elegent solution yet.
 
 #### Manual Injection
 In the event a newer version of the game is released (and you dont want to wait for a patch), or you just feel like doing it youself, you can do EITHER of the following
