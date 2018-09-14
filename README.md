@@ -9,6 +9,7 @@ Modding platform for Prehistoric Kingdom.
 #### Current Functionality
 - Save textures
 - Load TexturePack
+- (Proof of concept) Share skins to a database, hosted on Firebase. Press the Browse button.
 
 #### In Progress
 - Save/Load textures on demand for the selected animal
@@ -32,7 +33,8 @@ If you would prefer to fork and/or compile yourself, youll need to copy some fil
 - TexturePackData.dll to Prehistoric Kingdom_Data/Managed  (allows for binary serialized and compressed texturepacks)
 - modmenu.ab to Prehistoric Kingdom_Data/Mods (This is an assetbundle of the Mod UI. The source is in the DevKit Git)
 - PKMods.dll  to Prehistoric Kingdom_Data/Mods (This is the compiled code of the mods)
-- liblzma.dll to Prehistoric Kingdom_Data/Mono (allows for compressed texturepacks)
+- ~~liblzma.dll to Prehistoric Kingdom_Data/Mono (allows for compressed texturepacks)~~ compression removed, have not found an elegent solution yet.
+- SharpCompress to Prehistoric Kingdom_Data/Managed (get it from here https://github.com/adamhathcock/sharpcompress. Still trying to get compression to work)
 
 #### Manual Injection
 In the event a newer version of the game is released (and you dont want to wait for a patch), or you just feel like doing it youself, you can do EITHER of the following
@@ -43,13 +45,16 @@ or
 ```csharp
 Assembly.LoadFrom(Application.dataPath + "/Mods/PKMods.dll").GetType("PKMods.Loader").GetMethod("Load").Invoke(null, null);
 ```
+You may have to add a reference to System.Reflection.
 
-## Adding texture packs
+## Adding texture packs locally
 Download the latest release of the external texturepack creator here:
 https://github.com/Pathos0001/TexturePackCreator
 Then create a texturepack.
 
 And add them to the Mods/Texturepacks/ folder
 
+## Adding texture packs to the database
 
+This feature has not been added yet, but check back on the PKModsDevKit here https://github.com/Pathos0001/PKModsDevkit
 
