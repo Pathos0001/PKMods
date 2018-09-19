@@ -17,10 +17,11 @@ Modding platform for Prehistoric Kingdom.
 - other stuff
 
 ## How to Install
-Compile from source or download the latest release, then.
+Compile from source or download the latest release.
+To download, click "releases" from the top, download R2.zip,
+
 - Open your Prehistoric Kingdom installation folder. (might look like: C:\Program Files (x86)\Steam\steamapps\common\Prehistoric Kingdom Demo)
 
-### From Precompiled Release:
  - From the release you downloaded, copy the Prehistoric Kingdom_Data contents to your local Prehistoric Kingdom_Data directory.
 
 Start a game and press F1 to pull up the menu.
