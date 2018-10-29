@@ -50,7 +50,7 @@ You may have to add a reference to System.Reflection.
 
 ## Adding texture packs locally
 Download the latest release of the external texturepack creator here:
-https://github.com/Pathos0001/TexturePackCreator
+https://github.com/Pathos0925/TexturePackCreator
 Then create a texturepack.
 
 And add them to the Mods/Texturepacks/ folder
